@@ -221,6 +221,9 @@ module.exports = function(grunt) {
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              if(mock.alternatives[mock.useAlternative].status === "404") {
+                res.status(404);
+              }
               res.json(mock.alternatives[mock.useAlternative]);
               console.log("Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): ", req.url);
 
@@ -241,11 +244,8 @@ module.exports = function(grunt) {
 
       app.put("*", function(req, res){
 
-        console.log("puuuuuuut");
 
         var form = new formidable.IncomingForm();
-
-        console.log();
 
         form.parse(req, function(err, fields) {
           putbucket[encodeURIComponent(req.path)] = fields;
@@ -267,6 +267,9 @@ module.exports = function(grunt) {
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              if(mock.alternatives[mock.useAlternative].status === "404") {
+                res.status(404);
+              }
               res.json(mock.alternatives[mock.useAlternative]);
               console.log("Response ( alternative " + mock.method + " '" + mock.useAlternative + "'): ", req.url);
 
@@ -372,7 +375,7 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               if(mock.alternatives[mock.useAlternative].status === "404") {
-                res.sendStatus(404);
+                res.status(404);
               }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               console.log("Response ( alternative " + mock.method + " '" + mock.useAlternative + "'): ", req.url);
@@ -439,7 +442,6 @@ module.exports = function(grunt) {
           });
         }
         var currentmock = mockDatabase.getMock(mockdata.path, mockdata.method);
-
 
         if(currentmock.useAlternative!== undefined && currentmock.useAlternative!== null) {
           res.header("Data source", "proxy server / " + currentmock.useAlternative );

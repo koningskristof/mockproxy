@@ -443,12 +443,12 @@ module.exports = function(grunt) {
 
         if(currentmock.useAlternative!== undefined && currentmock.useAlternative!== null) {
           res.header("Data source", "proxy server / " + currentmock.useAlternative );
-          res.json({ responseData: currentmock.alternatives[currentmock.useAlternative].responseData });
+          res.json({ responseData: currentmock.alternatives[currentmock.useAlternative].responseData, testData: currentmock.alternatives[currentmock.useAlternative].testData });
           console.log("Response ( alternative '" + currentmock.useAlternative + "'): ", req.url);
 
         } else {
           res.header("Data source", "proxy server / normal" );
-          res.json({ responseData: currentmock.responseData });
+          res.json({ responseData: currentmock.responseData, testData: currentmock.testData });
           console.log("Response: ", req.url);
         }
 

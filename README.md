@@ -1,6 +1,8 @@
 # mockproxy
 
 > mockproxy
+## Beta
+This plugin is still in beta. We are working on stability and documentation.
 
 ## Getting Started
 This plugin requires Grunt `~0.4.5`

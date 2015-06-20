@@ -26,6 +26,18 @@ module.exports = function(grunt) {
     var httpProxy = require("http-proxy");
     var proxy = httpProxy.createProxyServer({});
     var _ = require("underscore-node");
+    var winston = require('winston');
+
+    if(!fs.existsSync("mockdata/log")){
+      fs.mkdirSync("mockdata/log", "0766", function(err){
+        if(err){
+          winston.error("ERROR! Can't make the mockdata/log directory! \n");
+          cwinston.error(err);
+        }
+      });
+    }
+
+    winston.add(winston.transports.File, { filename: 'mockdata/log/log-' + Date.now() + '.log' });
 
     var formidable = require("formidable");
     var postbucket = {};
@@ -75,8 +87,10 @@ module.exports = function(grunt) {
       var mockData = { "GET": {},"POST": {},"PUT": {}};
 
       this.getMock = function (path, method) {
-        console.log("Get mock for ", method);
+        winston.info("MockDatabase: getMock(): Get mock for " + method + " " + path);
+
         if(mockData[method][path]!==undefined) {
+          winston.info("MockDatabase: getMock(): Return exact match for " + method + " " + path);
           return mockData[method][path];
         }
         else {
@@ -84,6 +98,7 @@ module.exports = function(grunt) {
           _.each(mockData[method], function(value){
             try {
               var regex = new RegExp(value.path);
+              winston.info("MockDatabase: getMock(): Return regex match for " + method + " " + path + ": " + value.path);
               if(regex.test(path)) {
                 returndata = value;
               }
@@ -95,12 +110,13 @@ module.exports = function(grunt) {
         }
       };
       this.getAllMocks = function () {
+        winston.info("MockDatabase: getAllMocks()");
         return mockData;
       };
       this.setMock = function (path, method, mock, execListeners) {
         if(mockData[method]===undefined) { mockData[method]={}; }
         mockData[method][path] = mock;
-        console.log("Mock added for " + path);
+        winston.info("MockDatabase: setMock(): Mock added for " + method + " " + path);
         if(execListeners !== false) {
           this.execListeners();
         }
@@ -108,15 +124,17 @@ module.exports = function(grunt) {
       this.updateMock = function (path, method, mock, execListeners) {
         if(mockData[method]===undefined) { mockData[method]={}; }
         mockData[method][path] = mock;
-        console.log("Mock updated for " + method + ": " + path);
+        winston.info("MockDatabase: updateMock(): Mock updated for " + method + " " + path);
         if(execListeners !== false) {
           this.execListeners();
         }
       };
       this.addListener = function (listener) {
+        winston.info("MockDatabase: addListener(): Added listener");
         listeners.push(listener);
       };
       this.execListeners = function() {
+        winston.info("MockDatabase: execListeners(): Execute " + listeners.length + " listeners");
         _.each(listeners, function(listener) {
           listener(mockData);
         });
@@ -188,6 +206,37 @@ module.exports = function(grunt) {
 
     readMockdata().then(function(result) {
 
+
+      // This code logs the log data in the temporary folder, so that this can be used to create mocking files
+      if(!fs.existsSync("mockdata/tmp")){
+        fs.mkdirSync("mockdata/tmp", "0766", function(err){
+          if(err){
+            winston.error("ERROR! Can't make the mockdata/tmp directory! \n");
+            cwinston.error(err);
+          }
+        });
+      }
+      if(!fs.existsSync("mockdata/postbucket")){
+        fs.mkdirSync("mockdata/postbucket", "0766", function(err){
+          if(err){
+            winston.error("ERROR! Can't make the mockdata/postbucket directory! \n");
+            cwinston.error(err);
+          }
+        });
+      }
+      if(!fs.existsSync("mockdata/putbucket")){
+        fs.mkdirSync("mockdata/putbucket", "0766", function(err){
+          if(err){
+            winston.error("ERROR! Can't make the mockdata/putbucket directory! \n");
+            cwinston.error(err);
+          }
+        });
+      }
+
+
+
+      winston.info("Mock data readed");
+
       for (var i = 0, len = result.length; i < len; i++) {
         if (q.isPromise(result[i])) {
           var mockdata = result[i].valueOf();
@@ -198,42 +247,44 @@ module.exports = function(grunt) {
       mockDatabase.execListeners();
 
       app.post("*", function(req, res){
+        winston.info("Post '" + req.path + "'");
 
         var form = new formidable.IncomingForm();
 
         form.parse(req, function(err, fields) {
           postbucket[encodeURIComponent(req.path)] = fields;
-          fs.writeFile("mockdata/postbucket/" + encodeURIComponent(req.path) + "-" + Date.now() + ".json", JSON.stringify(fields, null, "\t"), function(err) {
+          var datenow = Date.now();
+          fs.writeFile("mockdata/postbucket/" + encodeURIComponent(req.path) + "-" + datenow + ".json", JSON.stringify(fields, null, "\t"), function(err) {
             if(err) {
               console.log(err);
             } else {
-              console.log("Postbucket file written.");
+              winston.info("Post '" + req.path + "': Postbucket file written: " + encodeURIComponent(req.path) + "-" + datenow + ".json");
             }
           });
         });
 
         var mock = mockDatabase.getMock(req.url, "POST");
 
-        console.log("Post request: ", req.url);
-
         if(mock!==undefined && mock.passThrough !== true) {
+          winston.info("Post '" + req.path + "': Going to mock call.");
+
           setTimeout(function () {
+            winston.info("Post '" + req.path + "': Delay = " + mock.delay);
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
-              res.json(mock.alternatives[mock.useAlternative]);
-              console.log("Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): ", req.url);
+              res.json(mock.alternatives[mock.useAlternative].responseData);
+              winston.info("Post '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
               res.json(mock.responseData);
-              console.log("Response: ", req.url);
+              winston.info("Post '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
-          console.log("Delay answer", mock.delay);
         } else {
-          console.log("Proxy request:", req.url);
+          winston.info("Post '" + req.path + "': Proxy request: " +  req.url);
           res.header("Data source", "passthrough");
           proxy.web(req, res, { target: globalConfig.backendUrl });
         }
@@ -241,77 +292,46 @@ module.exports = function(grunt) {
 
       app.put("*", function(req, res){
 
-        console.log("puuuuuuut");
+        winston.info("Put '" + req.path + "'");
 
         var form = new formidable.IncomingForm();
 
-        console.log();
-
         form.parse(req, function(err, fields) {
           putbucket[encodeURIComponent(req.path)] = fields;
-          fs.writeFile("mockdata/putbucket/" + encodeURIComponent(req.path) + "-" + Date.now() + ".json", JSON.stringify(fields, null, "\t"), function(err) {
+          var datenow = Date.now();
+          fs.writeFile("mockdata/putbucket/" + encodeURIComponent(req.path) + "-" + datenow + ".json", JSON.stringify(fields, null, "\t"), function(err) {
             if(err) {
               console.log(err);
             } else {
-              console.log("Putbucket file written.");
+              winston.info("Put '" + req.path + "': Putbucket file written: " + encodeURIComponent(req.path) + "-" + datenow + ".json");
             }
           });
         });
 
         var mock = mockDatabase.getMock(req.url, "PUT");
 
-        console.log("Put request: ", req.url);
-
         if(mock!==undefined && mock.passThrough !== true) {
           setTimeout(function () {
+            winston.info("Put '" + req.path + "': Delay = " + mock.delay);
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
-              res.json(mock.alternatives[mock.useAlternative]);
-              console.log("Response ( alternative " + mock.method + " '" + mock.useAlternative + "'): ", req.url);
+              res.json(mock.alternatives[mock.useAlternative].responseData);
+              winston.info("Put '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
               res.json(mock.responseData);
-              console.log("Response: ", req.url);
+              winston.info("Put '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
-          console.log("Delay answer", mock.delay);
         } else {
-          console.log("Proxy request:", req.url);
+          winston.info("Put '" + req.path + "': Proxy request: " +  req.url);
           res.header("Data source", "passthrough");
           proxy.web(req, res, { target: globalConfig.backendUrl });
         }
       });
-
-
-      // This code logs the log data in the temporary folder, so that this can be used to create mocking files
-      if(!fs.existsSync("mockdata/tmp")){
-        fs.mkdirSync("mockdata/tmp", "0766", function(err){
-          if(err){
-            console.log(err);
-            console.log("ERROR! Can't make the mockdata/tmp directory! \n");    // echo the result back
-          }
-        });
-      }
-      if(!fs.existsSync("mockdata/postbucket")){
-        fs.mkdirSync("mockdata/postbucket", "0766", function(err){
-          if(err){
-            console.log(err);
-            console.log("ERROR! Can't make the mockdata/postbucket directory! \n");    // echo the result back
-          }
-        });
-      }
-      if(!fs.existsSync("mockdata/putbucket")){
-        fs.mkdirSync("mockdata/putbucket", "0766", function(err){
-          if(err){
-            console.log(err);
-            console.log("ERROR! Can't make the mockdata/putbucket directory! \n");    // echo the result back
-          }
-        });
-      }
-
 
       proxy.on("proxyReq", function(proxyReq, req, res) {
         var oldWrite = res.write,
@@ -345,7 +365,7 @@ module.exports = function(grunt) {
             if(err) {
               console.log(err);
             } else {
-              console.log("Temp mock file written.");
+              winston.error("Proxy request log on " +  encodeURIComponent(req.path) + ".json");
             }
           });
 
@@ -361,13 +381,13 @@ module.exports = function(grunt) {
 
       app.get("*", function(req, res){
 
+        winston.info("Get '" + req.path + "'");
+
         var mock = mockDatabase.getMock(req.url, "GET");
-
-
-        console.log("Get request: ", req.url);
 
         if(mock!==undefined && mock.passThrough !== true) {
           setTimeout(function () {
+            winston.info("Get '" + req.path + "': Delay = " + mock.delay);
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
@@ -375,18 +395,17 @@ module.exports = function(grunt) {
                 res.sendStatus(404);
               }
               res.json(mock.alternatives[mock.useAlternative].responseData);
-              console.log("Response ( alternative " + mock.method + " '" + mock.useAlternative + "'): ", req.url);
+              winston.info("Get '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
               res.json(mock.responseData);
-              console.log("Response: ", req.url);
+              winston.info("Get '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
-          console.log("Delay answer", mock.delay);
         } else {
-          console.log("Proxy request:", req.url);
+          winston.info("Get '" + req.path + "': Proxy request: " +  req.url);
           res.header("Data source", "passthrough");
           proxy.web(req, res, { target: globalConfig.backendUrl });
 
@@ -426,7 +445,7 @@ module.exports = function(grunt) {
         if(mockdata.path!==undefined && mockdata.method!==undefined && mockdata.delay!==undefined && mockdata.passThrough!==undefined && mockdata.useAlternative!==undefined  ) {
           var oldversion = mockDatabase.getMock(mockdata.path, mockdata.method);
 
-          console.log("set passthrough", mockdata.passThrough);
+          winston.info("Config mock: " + oldversion.method + " " + mockdata.path + ": passThrough = " + mockdata.passThrough + ", delay = " + mockdata.delay + ", useAlternative" + mockdata.useAlternative);
 
           mockDatabase.updateMock(mockdata.path, oldversion.method, {
             path: mockdata.path,
@@ -444,12 +463,9 @@ module.exports = function(grunt) {
         if(currentmock.useAlternative!== undefined && currentmock.useAlternative!== null) {
           res.header("Data source", "proxy server / " + currentmock.useAlternative );
           res.json({ responseData: currentmock.alternatives[currentmock.useAlternative].responseData, testData: currentmock.alternatives[currentmock.useAlternative].testData });
-          console.log("Response ( alternative '" + currentmock.useAlternative + "'): ", req.url);
-
         } else {
           res.header("Data source", "proxy server / normal" );
           res.json({ responseData: currentmock.responseData, testData: currentmock.testData });
-          console.log("Response: ", req.url);
         }
 
       });
@@ -457,20 +473,22 @@ module.exports = function(grunt) {
 
 
       appConfig.get("/ngp/mockapi/list", function(req, res){
+        winston.info("Config mock: get all mocks");
         res.json(mockDatabase.getAllMocks());
       });
 
       appConfig.get("/ngp/mockapi/*", function(req, res){
+        winston.info("Config mock: get mock" + req.param("path") + ": " + JSON.stringify(mockDatabase.getMock(req.param("path"))));
         res.json(mockDatabase.getMock(req.param("path")));
       });
 
       appConfig.get("/ngp/postbucket", function(req, res){
+        winston.info("Config mock: get postbucket" + req.param("path") + ": " + JSON.stringify(postbucket[encodeURIComponent(req.param("path"))]) );
         res.json(postbucket[encodeURIComponent(req.param("path"))]);
       });
 
       appConfig.get("/ngp/putbucket", function(req, res){
-        console.log(putbucket);
-
+        winston.info("Config mock: get putbucket" + req.param("path") + ": " + JSON.stringify(putbucket[encodeURIComponent(req.param("path"))]) );
         res.json(putbucket[encodeURIComponent(req.param("path"))]);
       });
 
@@ -480,8 +498,8 @@ module.exports = function(grunt) {
 
       app.listen(globalConfig.portnr);
       appConfig.listen(globalConfig.portnrConfig);
-      console.log("Listening on port " + globalConfig.portnr);
-      console.log("Listening on port " + globalConfig.portnrConfig);
+      winston.info("Listening on port " + globalConfig.portnr);
+      winston.info("Listening on port " + globalConfig.portnrConfig);
 
       app.close();
       appConfig.close();

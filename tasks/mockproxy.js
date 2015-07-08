@@ -13,7 +13,7 @@ module.exports = function(grunt) {
   
   grunt.registerMultiTask("mockproxy", "mockproxy", function() {
     var globalConfig = {};
-    globalConfig.backendUrl = "http://172.30.99.66:8080";
+    globalConfig.backendUrl = "http://172.30.99.31:8080";
     globalConfig.portnr = "8081";
     globalConfig.portnrConfig = "8082";
 
@@ -36,8 +36,6 @@ module.exports = function(grunt) {
         }
       });
     }
-
-    winston.add(winston.transports.File, { filename: 'mockdata/log/log-' + Date.now() + '.log' });
 
     var formidable = require("formidable");
     var postbucket = {};
@@ -81,12 +79,15 @@ module.exports = function(grunt) {
     }
 
 
+    winston.add(winston.transports.File, { filename: 'mockdata/log/log-' + Date.now() + '-' + globalConfig.portnr + '.log' });
+
 
     function CreateMockDatabase () {
       var listeners = [];
       var mockData = { "GET": {},"POST": {},"PUT": {}};
 
       this.getMock = function (path, method) {
+        path = path.replace(/(\?|\&)?noCache\=(.*)/g, "");
         winston.info("MockDatabase: getMock(): Get mock for " + method + " " + path);
 
         if(mockData[method][path]!==undefined) {
@@ -273,19 +274,22 @@ module.exports = function(grunt) {
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              res.header("Proxy source", globalConfig.portnr );
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Post '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
+              res.header("Proxy source", globalConfig.portnr );
               res.json(mock.responseData);
               winston.info("Post '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
         } else {
-          winston.info("Post '" + req.path + "': Proxy request: " +  req.url);
+          winston.info("Post '" + req.path + "': Proxy request: " +  req.url + " to " + globalConfig.backendUrl);
           res.header("Data source", "passthrough");
+          res.header("Proxy source", globalConfig.portnr );
           proxy.web(req, res, { target: globalConfig.backendUrl });
         }
       });
@@ -316,19 +320,22 @@ module.exports = function(grunt) {
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              res.header("Proxy source", globalConfig.portnr );
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Put '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
+              res.header("Proxy source", globalConfig.portnr );
               res.json(mock.responseData);
               winston.info("Put '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
         } else {
-          winston.info("Put '" + req.path + "': Proxy request: " +  req.url);
+          winston.info("Put '" + req.path + "': Proxy request: " +  req.url + " to " + globalConfig.backendUrl);
           res.header("Data source", "passthrough");
+          res.header("Proxy source", globalConfig.portnr );
           proxy.web(req, res, { target: globalConfig.backendUrl });
         }
       });
@@ -365,7 +372,8 @@ module.exports = function(grunt) {
             if(err) {
               console.log(err);
             } else {
-              winston.error("Proxy request log on " +  encodeURIComponent(req.path) + ".json");
+              var datenow = Date.now();
+              winston.info("Proxy request log on " +  encodeURIComponent(req.path) + "-" + datenow + ".json");
             }
           });
 
@@ -391,6 +399,7 @@ module.exports = function(grunt) {
 
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              res.header("Proxy source", globalConfig.portnr );
               if(mock.alternatives[mock.useAlternative].status === "404") {
                 res.sendStatus(404);
               }
@@ -399,14 +408,16 @@ module.exports = function(grunt) {
 
             } else {
               res.header("Data source", "proxy server / " + mock.method + " / normal" );
+              res.header("Proxy source", globalConfig.portnr );
               res.json(mock.responseData);
               winston.info("Get '" + req.path + "': Response ( normal ): " +  req.url);
             }
           }, mock.delay);
 
         } else {
-          winston.info("Get '" + req.path + "': Proxy request: " +  req.url);
+          winston.info("Get '" + req.path + "': Proxy request: " +  req.url + " to " + globalConfig.backendUrl);
           res.header("Data source", "passthrough");
+          res.header("Proxy source", globalConfig.portnr );
           proxy.web(req, res, { target: globalConfig.backendUrl });
 
 
@@ -420,7 +431,7 @@ module.exports = function(grunt) {
       var allowCrossDomain = function(req, res, next) {
         res.header("Access-Control-Allow-Origin", "*");
         res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS");
-        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With");
+        res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With, Pragma, Cache-Control, If-Modified-Since");
 
         // intercept OPTIONS method
         if ("OPTIONS" === req.method) {
@@ -462,9 +473,11 @@ module.exports = function(grunt) {
 
         if(currentmock.useAlternative!== undefined && currentmock.useAlternative!== null) {
           res.header("Data source", "proxy server / " + currentmock.useAlternative );
+          res.header("Proxy source", globalConfig.portnr );
           res.json({ responseData: currentmock.alternatives[currentmock.useAlternative].responseData, testData: currentmock.alternatives[currentmock.useAlternative].testData });
         } else {
           res.header("Data source", "proxy server / normal" );
+          res.header("Proxy source", globalConfig.portnr );
           res.json({ responseData: currentmock.responseData, testData: currentmock.testData });
         }
 

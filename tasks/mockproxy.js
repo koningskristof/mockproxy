@@ -16,6 +16,7 @@ module.exports = function(grunt) {
     globalConfig.backendUrl = "http://172.30.99.66:8080";
     globalConfig.portnr = "8081";
     globalConfig.portnrConfig = "8082";
+    globalConfig.passThroughAll = false;
 
     var fs=require("fs");
     var q = require("q");
@@ -59,17 +60,20 @@ module.exports = function(grunt) {
     var options = this.options({
           backendUrl: "http://172.30.99.66:8080",
           portnr: "8081",
-          portnrConfig: "8082"
+          portnrConfig: "8082",
+          passThroughAll: false
         });
 
     globalConfig.portnr = options.portnr;
     globalConfig.portnrConfig = options.portnrConfig;
     globalConfig.backendUrl = options.backendUrl;
+    globalConfig.passThroughAll = options.passThroughAll;
 
 
     var argPortnr = getParameter(process.argv, "portnr");
     var argPortnrConfig = getParameter(process.argv, "portnrConfig");
     var argBackendUrl = getParameter(process.argv, "backendUrl");
+    var argPassThroughAll = getParameter(process.argv, "passThroughAll");
     if (argPortnr !== undefined) {
       globalConfig.portnr = argPortnr;
     }
@@ -79,8 +83,9 @@ module.exports = function(grunt) {
     if (argBackendUrl !== undefined) {
       globalConfig.backendUrl = argBackendUrl;
     }
-
-
+    if (argPassThroughAll !== undefined) {
+      globalConfig.passThroughAll = argPassThroughAll;
+    }
 
     function CreateMockDatabase () {
       var listeners = [];
@@ -265,7 +270,7 @@ module.exports = function(grunt) {
 
         var mock = mockDatabase.getMock(req.url, "POST");
 
-        if(mock!==undefined && mock.passThrough !== true) {
+        if(mock!==undefined && globalConfig.passThroughAll != true && mock.passThrough !== true) {
           winston.info("Post '" + req.path + "': Going to mock call.");
 
           setTimeout(function () {
@@ -310,7 +315,7 @@ module.exports = function(grunt) {
 
         var mock = mockDatabase.getMock(req.url, "PUT");
 
-        if(mock!==undefined && mock.passThrough !== true) {
+        if(mock!==undefined && globalConfig.passThroughAll != true && mock.passThrough !== true) {
           setTimeout(function () {
             winston.info("Put '" + req.path + "': Delay = " + mock.delay);
 
@@ -385,7 +390,7 @@ module.exports = function(grunt) {
 
         var mock = mockDatabase.getMock(req.url, "GET");
 
-        if(mock!==undefined && mock.passThrough !== true) {
+        if(mock!==undefined && globalConfig.passThroughAll != true &&  mock.passThrough !== true) {
           setTimeout(function () {
             winston.info("Get '" + req.path + "': Delay = " + mock.delay);
 

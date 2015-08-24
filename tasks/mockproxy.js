@@ -367,23 +367,27 @@ module.exports = function(grunt) {
 
           var body = Buffer.concat(chunks).toString("utf8");
 
-          var writedata = {
-            "path":req.path,
-            "passThrough": false,
-            "delay": 0,
-            "responseData": JSON.parse(body),
-            "alternatives":{},
-            "useAlternative": null
-          };
+          try {
+            var writedata = {
+              "path":req.path,
+              "passThrough": false,
+              "delay": 0,
+              "responseData": JSON.parse(body),
+              "alternatives":{},
+              "useAlternative": null
+            };
 
-          fs.writeFile("mockdata/tmp/" + encodeURIComponent(req.path) + ".json", JSON.stringify(writedata, null, "\t"), function(err) {
-            if(err) {
-              console.log(err);
-            } else {
-              var datenow = Date.now();
-              winston.info("Proxy request log on " +  encodeURIComponent(req.path) + "-" + datenow + ".json");
-            }
-          });
+            fs.writeFile("mockdata/tmp/" + encodeURIComponent(req.path) + ".json", JSON.stringify(writedata, null, "\t"), function(err) {
+              if(err) {
+                console.log(err);
+              } else {
+                var datenow = Date.now();
+                winston.info("Proxy request log on " +  encodeURIComponent(req.path) + "-" + datenow + ".json");
+              }
+            });
+          } catch (e) {
+            winston.error("Could not parse JSON: " + encodeURIComponent(req.path) + " " + body);
+          }
 
           oldEnd.apply(res, arguments);
         };

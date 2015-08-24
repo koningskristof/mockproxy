@@ -115,6 +115,11 @@ module.exports = function(grunt) {
               console.log(e);
             }
           });
+
+          if(returndata == undefined) {
+              winston.error("MockDatabase: getMock(): No match for " + method + " " + path);
+          }
+          
           return returndata;
         }
       };

@@ -288,6 +288,9 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               res.header("Proxy source", globalConfig.portnr );
+              if(mock.alternatives[mock.useAlternative].status === "404") {
+                res.sendStatus(404);
+              }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Post '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
@@ -334,6 +337,9 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               res.header("Proxy source", globalConfig.portnr );
+              if(mock.alternatives[mock.useAlternative].status === "404") {
+                res.sendStatus(404);
+              }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Put '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
 
@@ -372,27 +378,37 @@ module.exports = function(grunt) {
 
           var body = Buffer.concat(chunks).toString("utf8");
 
-          try {
-            var writedata = {
-              "path":req.path,
-              "passThrough": false,
-              "delay": 0,
-              "responseData": JSON.parse(body),
-              "alternatives":{},
-              "useAlternative": null
-            };
 
-            fs.writeFile("mockdata/tmp/" + encodeURIComponent(req.path) + ".json", JSON.stringify(writedata, null, "\t"), function(err) {
-              if(err) {
-                console.log(err);
-              } else {
-                var datenow = Date.now();
-                winston.info("Proxy request log on " +  encodeURIComponent(req.path) + "-" + datenow + ".json");
-              }
-            });
-          } catch (e) {
-            winston.error("Could not parse JSON: " + encodeURIComponent(req.path) + " " + body);
+          var json;
+
+          try
+          {
+            json = JSON.parse(body);
           }
+          catch(e)
+          {
+             json = body;
+          }
+
+
+          var writedata = {
+            "path":req.path,
+            "passThrough": false,
+            "delay": 0,
+            "responseData": json,
+            "alternatives":{},
+            "useAlternative": null
+          };
+
+          fs.writeFile("mockdata/tmp/" + encodeURIComponent(req.path) + ".json", JSON.stringify(writedata, null, "\t"), function(err) {
+            if(err) {
+              console.log(err);
+            } else {
+              var datenow = Date.now();
+              winston.info("Proxy request log on " +  encodeURIComponent(req.path) + "-" + datenow + ".json");
+            }
+          });
+
 
           oldEnd.apply(res, arguments);
         };

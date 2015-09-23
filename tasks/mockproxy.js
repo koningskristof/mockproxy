@@ -41,6 +41,7 @@ module.exports = function(grunt) {
     var formidable = require("formidable");
     var postbucket = {};
     var putbucket = {};
+    var deletebucket = {};
 
     function getParameter(args, name) {
       name = name + "=";
@@ -246,6 +247,14 @@ module.exports = function(grunt) {
           }
         });
       }
+      if(!fs.existsSync("mockdata/deletebucket")){
+        fs.mkdirSync("mockdata/deletebucket", "0766", function(err){
+          if(err){
+            winston.error("ERROR! Can't make the mockdata/deletebucket directory! \n");
+            cwinston.error(err);
+          }
+        });
+      }
 
 
 
@@ -259,6 +268,57 @@ module.exports = function(grunt) {
       }
 
       mockDatabase.execListeners();
+
+
+
+      app.delete("*", function(req, res){
+        winston.info("Delete '" + req.path + "'");
+        var form = new formidable.IncomingForm();
+
+        form.parse(req, function(err, fields) {
+          deletebucket[encodeURIComponent(req.path)] = fields;
+          var datenow = Date.now();
+          fs.writeFile("mockdata/deletebucket/" + encodeURIComponent(req.path) + "-" + datenow + ".json", JSON.stringify(fields, null, "\t"), function(err) {
+            if(err) {
+              console.log(err);
+            } else {
+              winston.info("Delete '" + req.path + "': Deletebucket file written: " + encodeURIComponent(req.path) + "-" + datenow + ".json");
+            }
+          });
+        });
+
+        var mock = mockDatabase.getMock(req.url, "DELETE");
+
+        if(mock!==undefined && globalConfig.passThroughAll != true && mock.passThrough !== true) {
+          winston.info("Delete '" + req.path + "': Going to mock call.");
+
+          setTimeout(function () {
+            winston.info("Delete '" + req.path + "': Delay = " + mock.delay);
+
+            if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
+              res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
+              res.header("Proxy source", globalConfig.portnr );
+              if(mock.alternatives[mock.useAlternative].status !== undefined) {
+                res.sendStatus(mock.alternatives[mock.useAlternative].status);
+              }
+              res.json(mock.alternatives[mock.useAlternative].responseData);
+              winston.info("Delete '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
+
+            } else {
+              res.header("Data source", "proxy server / " + mock.method + " / normal" );
+              res.header("Proxy source", globalConfig.portnr );
+              res.json(mock.responseData);
+              winston.info("Delete '" + req.path + "': Response ( normal ): " +  req.url);
+            }
+          }, mock.delay);
+
+        } else {
+          winston.info("Delete '" + req.path + "': Proxy request: " +  req.url + " to " + globalConfig.backendUrl);
+          res.header("Data source", "passthrough");
+          res.header("Proxy source", globalConfig.portnr );
+          proxy.web(req, res, { target: globalConfig.backendUrl });
+        }
+      });
 
       app.post("*", function(req, res){
         winston.info("Post '" + req.path + "'");
@@ -288,8 +348,8 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               res.header("Proxy source", globalConfig.portnr );
-              if(mock.alternatives[mock.useAlternative].status === "404") {
-                res.sendStatus(404);
+              if(mock.alternatives[mock.useAlternative].status !== undefined) {
+                res.sendStatus(mock.alternatives[mock.useAlternative].status);
               }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Post '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
@@ -337,8 +397,8 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               res.header("Proxy source", globalConfig.portnr );
-              if(mock.alternatives[mock.useAlternative].status === "404") {
-                res.sendStatus(404);
+              if(mock.alternatives[mock.useAlternative].status !== undefined) {
+                res.sendStatus(mock.alternatives[mock.useAlternative].status);
               }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Put '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);
@@ -433,8 +493,8 @@ module.exports = function(grunt) {
             if(mock.useAlternative!== undefined && mock.useAlternative!== null) {
               res.header("Data source", "proxy server / " + mock.method + " / " + mock.useAlternative );
               res.header("Proxy source", globalConfig.portnr );
-              if(mock.alternatives[mock.useAlternative].status === "404") {
-                res.sendStatus(404);
+              if(mock.alternatives[mock.useAlternative].status !== undefined) {
+                res.sendStatus(mock.alternatives[mock.useAlternative].status);
               }
               res.json(mock.alternatives[mock.useAlternative].responseData);
               winston.info("Get '" + req.path + "': Response ( alternative " + mock.method + "'" + mock.useAlternative + "'): " +  req.url);

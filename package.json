@@ -1,7 +1,7 @@
 {
   "name": "mockproxy",
   "description": "mockproxy",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "homepage": "",
   "author": {
     "name": "Kristof Konings",
@@ -25,6 +25,7 @@
     "test": "grunt test"
   },
   "dependencies": {
+    "agentkeepalive": "^2.0.2",
     "karma": "~0.8.5",
     "superagent": "^1.1.0",
     "winston": "^1.0.0"

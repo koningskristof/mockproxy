@@ -543,7 +543,7 @@ module.exports = function(grunt) {
 
 
 
-      appConfig.post("/ngp/mockapi/", function(req, res){
+      appConfig.post("/services/mockapi/", function(req, res){
 
         var mockdata = req.body;
         if(mockdata.path!==undefined && mockdata.method!==undefined && mockdata.delay!==undefined && mockdata.passThrough!==undefined && mockdata.useAlternative!==undefined  ) {
@@ -578,22 +578,22 @@ module.exports = function(grunt) {
 
 
 
-      appConfig.get("/ngp/mockapi/list", function(req, res){
+      appConfig.get("/services/mockapi/list", function(req, res){
         winston.info("Config mock: get all mocks");
         res.json(mockDatabase.getAllMocks());
       });
 
-      appConfig.get("/ngp/mockapi/*", function(req, res){
+      appConfig.get("/services/mockapi/*", function(req, res){
         winston.info("Config mock: get mock" + req.param("path") + ": " + JSON.stringify(mockDatabase.getMock(req.param("path"))));
         res.json(mockDatabase.getMock(req.param("path")));
       });
 
-      appConfig.get("/ngp/postbucket", function(req, res){
+      appConfig.get("/services/postbucket", function(req, res){
         winston.info("Config mock: get postbucket" + req.param("path") + ": " + JSON.stringify(postbucket[encodeURIComponent(req.param("path"))]) );
         res.json(postbucket[encodeURIComponent(req.param("path"))]);
       });
 
-      appConfig.get("/ngp/putbucket", function(req, res){
+      appConfig.get("/services/putbucket", function(req, res){
         winston.info("Config mock: get putbucket" + req.param("path") + ": " + JSON.stringify(putbucket[encodeURIComponent(req.param("path"))]) );
         res.json(putbucket[encodeURIComponent(req.param("path"))]);
       });

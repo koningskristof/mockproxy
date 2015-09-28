@@ -7,17 +7,17 @@ getBucket = function(method, path) {
 
   console.log("path", path);
   console.log("method", method);
-  console.log("url", "http://localhost:" + portNr + "/ngp/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)));
+  console.log("url", "http://localhost:" + portNr + "/services/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)));
 
   if(method==="PUT") {
     request
-      .get("http://localhost:" + portNr + "/ngp/putbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
+      .get("http://localhost:" + portNr + "/services/putbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
       .end(function(error, res){
         defer.fulfill(res.body);
       });
   } else if(method==="POST") {
     request
-      .get("http://localhost:" + portNr + "/ngp/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
+      .get("http://localhost:" + portNr + "/services/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
       .end(function(error, res){
         defer.fulfill(res.body);
       });
@@ -47,7 +47,7 @@ var mockproxy = function() {
     var defer = protractor.promise.defer();
 
     request
-      .post("http://localhost:" + portNr + "/ngp/mockapi/")
+      .post("http://localhost:" + portNr + "/services/mockapi/")
       .send(params)
       .agent(keepaliveAgent)
       .end(function(error, res){
@@ -90,17 +90,17 @@ var mockproxy = function() {
 
     console.log("path", path);
     console.log("method", method);
-    console.log("url", "http://localhost:" + portNr + "/ngp/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)));
+    console.log("url", "http://localhost:" + portNr + "/services/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)));
 
     if(method==="PUT") {
       request
-        .get("http://localhost:" + portNr + "/ngp/putbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
+        .get("http://localhost:" + portNr + "/services/putbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
         .end(function(error, res){
           defer.fulfill(res.body);
         });
     } else if(method==="POST") {
       request
-        .get("http://localhost:" + portNr + "/ngp/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
+        .get("http://localhost:" + portNr + "/services/postbucket/?path=" + path + "&random=" + Math.random(1,Math.pow(10, 10)))
         .end(function(error, res){
           defer.fulfill(res.body);
         });
